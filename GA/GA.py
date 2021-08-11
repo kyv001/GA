@@ -123,7 +123,7 @@ def main1():
             screen.blit(text, (0, 0))
             pygame.display.update()
 
-        # 选择（选择适应度最高的50个）
+        # 选择（选择离目标最近的50个）
         players.sort()
         players = players[-50:]
 
