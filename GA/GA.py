@@ -2,6 +2,7 @@ import numpy as np
 import pygame
 import random
 import json
+import matplotlib.pyplot as plt
 from pygame.locals import *
 
 def relu_l(array):
@@ -101,13 +102,19 @@ class Player:
     def __gt__(self, b):
         return self.fitness > b.fitness
 
+    def __int__(self):
+        return self.fitness
+
 def main1():
-    gen_end = 100
+    gen_end = 1000
     players = [Player(NetWork(), [200, 200], 
                       (
                           round(_ * 0.51), 0, round((500 - _) * 0.51)
                       )) for _ in range(500)]
     font = pygame.font.SysFont(None, 50)
+    highest_fitnesses = []
+    average_fitnesses = []
+
     for gen in range(1, gen_end + 1, 1):
         foodpos = [random.randint(0, 400), random.randint(0, 400)]
         for _ in range(200):
@@ -123,8 +130,17 @@ def main1():
             screen.blit(text, (0, 0))
             pygame.display.update()
 
-        # 选择（选择离目标最近的50个）
+        # 排序并算出最高适应度和平均适应度
         players.sort()
+        highest_fitness = players[-1].fitness
+        highest_fitnesses.append(highest_fitness)
+        sum_fitness = 0
+        for player in players:
+            sum_fitness += player.fitness
+        average_fitness = sum_fitness / len(players)
+        average_fitnesses.append(average_fitness)
+
+        # 选择（选择离目标最近的50个）
         players = players[-50:]
 
         # 交叉（随机选择450组，单点交叉后放入队列末端）
@@ -156,8 +172,15 @@ def main1():
         'gen': gen_end,
         'chromosome': list(players[-1].action_from.chromosome)
     }
+    res2 = {
+        'gen_end': gen_end,
+        'highest_fitnesses': highest_fitnesses,
+        'average_fitnesses': average_fitnesses
+    }
     with open("res.json", "w") as f_obj:
-        json_res = json.dump(res, f_obj)
+        json.dump(res, f_obj)
+    with open("fitnesses.json", 'w') as f_obj:
+        json.dump(res2, f_obj)
 
 def main2():
     with open("res.json", "r") as f_obj:
@@ -184,5 +207,20 @@ def main2():
         pygame.display.update()
         clock.tick(60)
 
+def main3():
+    with open("fitnesses.json", "r") as f_obj:
+        res = json.load(f_obj)
+    fig = plt.Figure()
+    x = list(range(1, res['gen_end'] + 1))
+    y = res['highest_fitnesses']
+    y2 = res['average_fitnesses']
+
+    highest, = plt.plot(x, y, label="highest fitness")
+    average, = plt.plot(x, y2, label="highest fitness")
+    plt.xlabel("Generation")
+    plt.ylabel("Fitness")
+    plt.legend(handles=[highest, average], loc='best')
+    plt.show()
+
 if __name__ == '__main__':
-    main2()
+    main3()
