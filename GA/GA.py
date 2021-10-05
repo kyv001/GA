@@ -3,6 +3,7 @@ import pygame
 import random
 import json
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 from pygame.locals import *
 
 def relu_l(array):
@@ -44,13 +45,6 @@ class NetWork:
         c.rebuild_from_chromosome()
         return c
 
-net = NetWork()
-net.run(np.array([0, 1, 0, 0, 0, 0, 0, 0]))
-
-pygame.init()
-screen = pygame.display.set_mode((400, 400))
-clock = pygame.time.Clock()
-
 class Player:
     def __init__(self, action_from, pos, color):
         self.action_from = action_from
@@ -59,7 +53,7 @@ class Player:
         self.fitness = 0
         self.color = color
 
-    def update(self, screen, food_pos):
+    def update(self, screen, food_pos, show):
         food_x, food_y = food_pos
         inputs = np.array(
             [
@@ -96,8 +90,9 @@ class Player:
             abs((food_y - self.y) ** 2))
         self.fitness = 566 - distance
 
-        rect = pygame.Rect(self.x - 5, self.y - 5, 10, 10)
-        pygame.draw.rect(screen, self.color, rect)
+        if show:
+            rect = pygame.Rect(self.x - 5, self.y - 5, 10, 10)
+            pygame.draw.rect(screen, self.color, rect)
 
     def __gt__(self, b):
         return self.fitness > b.fitness
@@ -105,30 +100,37 @@ class Player:
     def __int__(self):
         return self.fitness
 
-def main1():
-    gen_end = 1000
-    players = [Player(NetWork(), [200, 200], 
-                      (
-                          round(_ * 0.51), 0, round((500 - _) * 0.51)
-                      )) for _ in range(500)]
-    font = pygame.font.SysFont(None, 50)
+def main1(gen_end, show):
+    if show:
+        pygame.init()
+        screen = pygame.display.set_mode((400, 400))
+        players = [Player(NetWork(), [200, 200], 
+                          (
+                              round(_ * 0.51), 0, round((500 - _) * 0.51)
+                          )) for _ in range(500)]
+        font = pygame.font.SysFont(None, 50)
+    else:
+        screen = None
+        players = [Player(NetWork(), [200, 200], (0, 0, 0)) for _ in range(500)]
     highest_fitnesses = []
     average_fitnesses = []
 
-    for gen in range(1, gen_end + 1, 1):
+    for gen in tqdm(range(1, gen_end + 1, 1)):
         foodpos = [random.randint(0, 400), random.randint(0, 400)]
         for _ in range(200):
-            screen.fill(0)
-            for event in pygame.event.get():
-                if event.type == QUIT:
-                    return 0
+            if show:
+                screen.fill(0)
+                for event in pygame.event.get():
+                    if event.type == QUIT:
+                        return 0
             for player in players:
-                player.update(screen, foodpos)
-            foodrect = pygame.Rect(foodpos[0] - 5, foodpos[1] - 5, 10, 10)
-            pygame.draw.rect(screen, (0, 255, 0), foodrect)
-            text = font.render("GEN {}".format(gen), True, (255, 255, 255))
-            screen.blit(text, (0, 0))
-            pygame.display.update()
+                player.update(screen, foodpos, show)
+            if show:
+                foodrect = pygame.Rect(foodpos[0] - 5, foodpos[1] - 5, 10, 10)
+                pygame.draw.rect(screen, (0, 255, 0), foodrect)
+                text = font.render("GEN {}".format(gen), True, (255, 255, 255))
+                screen.blit(text, (0, 0))
+                pygame.display.update()
 
         # 排序并算出最高适应度和平均适应度
         players.sort()
@@ -162,9 +164,10 @@ def main1():
             players[i].x = 200
             players[i].y = 200
             players[i].fitness = 0
-            players[i].color = (
-                round(i * 0.51), 0, round((500 - i) * 0.51)
-            )
+            if show:
+                players[i].color = (
+                    round(i * 0.51), 0, round((500 - i) * 0.51)
+                )
 
     # 演化结束，将适应度最高的玩家的染色体放入res.json
     players.sort()
@@ -181,33 +184,10 @@ def main1():
         json.dump(res, f_obj)
     with open("fitnesses.json", 'w') as f_obj:
         json.dump(res2, f_obj)
+        
+    pygame.quit()
 
 def main2():
-    with open("res.json", "r") as f_obj:
-        res = json.load(f_obj)
-    gen = res['gen']
-    net = NetWork()
-    net.chromosome = np.array(res["chromosome"])
-    net.rebuild_from_chromosome()
-    player = Player(net, (200, 200), (255, 255, 255))
-    foodpos = [random.randint(0, 400), random.randint(0, 400)]
-    font = pygame.font.SysFont(None, 50)
-    while True:
-        screen.fill(0)
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                return 0
-        player.update(screen, foodpos)
-        foodrect = pygame.Rect(foodpos[0] - 5, foodpos[1] - 5, 10, 10)
-        pygame.draw.rect(screen, (0, 255, 0), foodrect)
-        if foodrect.collidepoint((player.x, player.y)):
-            foodpos = [random.randint(0, 400), random.randint(0, 400)]
-        text = font.render("GEN {}".format(gen), True, (255, 255, 255))
-        screen.blit(text, (0, 0))
-        pygame.display.update()
-        clock.tick(60)
-
-def main3():
     with open("fitnesses.json", "r") as f_obj:
         res = json.load(f_obj)
     fig = plt.Figure()
@@ -222,5 +202,34 @@ def main3():
     plt.legend(handles=[highest, average], loc='best')
     plt.show()
 
+def main3():
+    pygame.init()
+    with open("res.json", "r") as f_obj:
+        res = json.load(f_obj)
+    gen = res['gen']
+    net = NetWork()
+    net.chromosome = np.array(res["chromosome"])
+    net.rebuild_from_chromosome()
+    player = Player(net, (200, 200), (255, 255, 255))
+    foodpos = [random.randint(0, 400), random.randint(0, 400)]
+    font = pygame.font.SysFont(None, 50)
+    screen = pygame.display.set_mode((400, 400))
+    while True:
+        screen.fill(0)
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                return
+        player.update(screen, foodpos, True)
+        foodrect = pygame.Rect(foodpos[0] - 5, foodpos[1] - 5, 10, 10)
+        pygame.draw.rect(screen, (0, 255, 0), foodrect)
+        if foodrect.collidepoint((player.x, player.y)):
+            foodpos = [random.randint(0, 400), random.randint(0, 400)]
+        text = font.render("GEN {}".format(gen), True, (255, 255, 255))
+        screen.blit(text, (0, 0))
+        pygame.display.update()
+
 if __name__ == '__main__':
+    main1(int(input("进化代数：")), int(input("显示训练过程？（1/0）")))
+    main2()
     main3()
