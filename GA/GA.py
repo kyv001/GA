@@ -153,11 +153,12 @@ def main1(gen_end, show):
             p3 = Player(n3, [200, 200], (0, 0, 0))
             players.append(p3)
 
-        # 变异（每个player有一定几率改变染色体中任意一个数）
+        # 变异（每个player有一定几率改变染色体中任意五个数）
         for i in range(len(players)):
             if random.randint(1, 10) == 1 and i > 0:
-                mutationpoint = random.randint(0, 99)
-                players[i].action_from.chromosome[mutationpoint] = np.random.rand()
+                for _ in range(5):
+                    mutationpoint = random.randint(0, 99)
+                    players[i].action_from.chromosome[mutationpoint] = np.random.rand()
 
         # 将所有玩家放回起点，重置适应值，上色
         for i in range(len(players)):
@@ -190,13 +191,13 @@ def main1(gen_end, show):
 def main2():
     with open("fitnesses.json", "r") as f_obj:
         res = json.load(f_obj)
-    fig = plt.Figure()
+    #fig = plt.Figure()
     x = list(range(1, res['gen_end'] + 1))
     y = res['highest_fitnesses']
     y2 = res['average_fitnesses']
 
     highest, = plt.plot(x, y, label="highest fitness")
-    average, = plt.plot(x, y2, label="highest fitness")
+    average, = plt.plot(x, y2, label="average fitness")
     plt.xlabel("Generation")
     plt.ylabel("Fitness")
     plt.legend(handles=[highest, average], loc='best')
